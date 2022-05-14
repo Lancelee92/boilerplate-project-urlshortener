@@ -32,25 +32,42 @@ app.get('/api/hello', function(req, res) {
   res.json({ greeting: 'hello API' });
 });
 
-app.get('/api/shorturl/:id', (req, res) => {
-  //console.log(req.params.id);
-  shortenedUrl.findOne({ _id: req.params.id }, (err, doc) => {
-    if(err)
-      res.json({ error: err });
+app.get('/api/shorturl/:short_url', (req, res) => {
+  console.log('shorturl: ' + req.params.short_url);
+  if(req.params.short_url && req.params.short_url != undefined && req.params.short_url != 'undefined'){
+    shortenedUrl.findOne({ _id: req.params.short_url }, (err, doc) => {
+      if(err)
+         return res.json({ error: err });
 
-    //console.log(doc.url);
-    res.redirect(doc.url);    
-  });
+      if(doc){
+        console.log(doc.url);
+        res.redirect(doc.url);      
+      }
+      else {
+        res.json({ error: 'invalid url' });
+      }
+    });
+  }
+  else {
+    res.json({ error: 'invalid url' });
+  }
+  
 });
 
 app.get('/api/shorturl', function(req, res) {
 
   shortenedUrl.find().exec((err, doc) => {
     if(err)
-      res.json({ greeting: 'hello API' });
-    else
+      return res.json({ greeting: 'hello API' });
+    
       res.json(doc);
   })
+  
+});
+
+app.get('/api/remove', function(req, res) {
+
+  shortenedUrl.deleteMany().exec();
   
 });
 
@@ -63,20 +80,33 @@ app.post('/api/shorturl', (req, res) => {
     };
   
     dns.lookup(req.body.url, options, (err, addresses) => {
-      if(err){
+      if(err && req.body.url.includes('https://boilerplate-project-urlshortener-1.lyc3.repl.co') == false){
         if(err.code == 'ENOTFOUND')
           return res.json({ error: 'invalid url' });
       }
       else {
-        const newUrl = new shortenedUrl();
-        newUrl.url = req.body.url;
-    
-        newUrl.save((err, doc) => {
+
+        shortenedUrl.find({ url: req.body.url }).exec((err, doc) => {
           if(err)
-            console.error(err);
-    
-          res.json({"original_url":req.body.url,"short_url":doc['_id']})
-        });    
+            return res.json({ greeting: 'hello API' });
+
+            if(doc.length == 0){
+              const newUrl = new shortenedUrl();
+              newUrl.url = req.body.url;
+          
+              newUrl.save((err, doc) => {
+                if(err)
+                  console.error(err);
+          
+                res.json({"original_url":req.body.url,"short_url":doc['_id']});
+              });  
+            }
+            else {
+              res.json({"original_url":req.body.url,"short_url":doc[0]['_id']});
+            }
+            
+        });
+          
       }
       
     });
